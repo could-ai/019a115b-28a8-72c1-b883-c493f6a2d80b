@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 void main() {
   runApp(const MyApp());
@@ -7,114 +8,275 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Teen Social App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        brightness: Brightness.dark,
+        primaryColor: const Color(0xFF8338EC),
+        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF8338EC),
+          brightness: Brightness.dark,
+          secondary: const Color(0xFFFB5607),
+          tertiary: const Color(0xFFFFBE0B),
+        ),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const HomeScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+  int _currentIndex = 0;
+  late AnimationController _controller;
+  static const double _fabDimension = 56.0;
 
-  void _incrementCounter() {
+  final List<Widget> _screens = [
+    const FeedScreen(),
+    const ChatScreen(),
+    const DiscoverScreen(),
+    const ProfileScreen(),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onIconTapped(int index) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _currentIndex = index;
     });
+    _controller.reverse();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: Stack(
+        children: <Widget>[
+          _screens[_currentIndex],
+          Positioned(
+            bottom: 30.0,
+            left: MediaQuery.of(context).size.width / 2 - _fabDimension / 2,
+            child: _buildCircularNavigation(),
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+    );
+  }
+
+  Widget _buildCircularNavigation() {
+    final icons = [
+      {'icon': Icons.dynamic_feed, 'label': 'Feed'},
+      {'icon': Icons.chat_bubble, 'label': 'Chat'},
+      {'icon': Icons.explore, 'label': 'Discover'},
+      {'icon': Icons.person, 'label': 'Profile'},
+    ];
+
+    return SizedBox(
+      width: 250,
+      height: 250,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          ...List.generate(icons.length, (index) {
+            final angle = (index * (360 / icons.length) - 90) * (math.pi / 180);
+            return Flow(
+              delegate: FlowMenuDelegate(controller: _controller),
+              children: [
+                Transform.translate(
+                  offset: Offset(
+                    math.cos(angle) * 80,
+                    math.sin(angle) * 80,
+                  ),
+                  child: GestureDetector(
+                    onTap: () => _onIconTapped(index),
+                    child: CircleAvatar(
+                      radius: 28,
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      child: Icon(
+                        icons[index]['icon'] as IconData,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+          FloatingActionButton(
+            backgroundColor: Theme.of(context).primaryColor,
+            onPressed: () {
+              if (_controller.isDismissed) {
+                _controller.forward();
+              } else {
+                _controller.reverse();
+              }
+            },
+            child: AnimatedIcon(
+              icon: AnimatedIcons.menu_close,
+              progress: _controller,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class FlowMenuDelegate extends FlowDelegate {
+  final Animation<double> controller;
+
+  FlowMenuDelegate({required this.controller}) : super(repaint: controller);
+
+  @override
+  void paintChildren(FlowPaintingContext context) {
+    if (controller.value == 0) return;
+    for (int i = 0; i < context.childCount; i++) {
+      final size = context.getChildSize(i)!;
+      final x = (size.width / 2) * (1 - controller.value);
+      final y = (size.height / 2) * (1 - controller.value);
+      context.paintChild(i, transform: Matrix4.translationValues(-x, -y, 0)
+        ..scale(controller.value));
+    }
+  }
+
+  @override
+  bool shouldRepaint(FlowMenuDelegate oldDelegate) => controller != oldDelegate.controller;
+}
+
+// Placeholder Screens
+class FeedScreen extends StatelessWidget {
+  const FeedScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFF1A1A1A), const Color(0xFF2C2C2C)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: const Center(
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text('$_counter', style: Theme.of(context).textTheme.headlineMedium),
+          children: [
+            Icon(Icons.dynamic_feed, size: 80, color: Colors.white70),
+            SizedBox(height: 20),
+            Text('Visual & Video Feed', style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Photos, short videos, and challenges', style: TextStyle(fontSize: 16, color: Colors.white70)),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+class ChatScreen extends StatelessWidget {
+  const ChatScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFF1A1A1A), const Color(0xFF2C2C2C)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.chat_bubble, size: 80, color: Colors.white70),
+            SizedBox(height: 20),
+            Text('Instant Messaging', style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Real-time chat with emojis and 3D avatars', style: TextStyle(fontSize: 16, color: Colors.white70)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DiscoverScreen extends StatelessWidget {
+  const DiscoverScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFF1A1A1A), const Color(0xFF2C2C2C)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.explore, size: 80, color: Colors.white70),
+            SizedBox(height: 20),
+            Text('Discover', style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Interest-based recommendations', style: TextStyle(fontSize: 16, color: Colors.white70)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFF1A1A1A), const Color(0xFF2C2C2C)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person, size: 80, color: Colors.white70),
+            SizedBox(height: 20),
+            Text('Profile', style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Your personal space with videos and challenges', style: TextStyle(fontSize: 16, color: Colors.white70)),
+          ],
+        ),
+      ),
     );
   }
 }
